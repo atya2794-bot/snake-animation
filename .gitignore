@@ -1,0 +1,8 @@
+build/
+output/
+*.mp4
+blender-bin/
+blender.tar.xz
+__pycache__/
+*.pyc
+.DS_Store

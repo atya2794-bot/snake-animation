@@ -1,0 +1,7 @@
+Place your source image here as "input.jpg" (or point --image / the
+workflow_dispatch "image_path" input at a different file in this folder).
+
+Good source images have a clear, high-contrast subject with a strong
+outline (a portrait, a product shot, a logo, a building) — the contour
+detector picks the single longest continuous edge in the image, and that's
+what the snake will trace.

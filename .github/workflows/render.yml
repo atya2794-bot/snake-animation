@@ -1,0 +1,89 @@
+name: Render Snake Cinematic Video
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_path:
+        description: "Path (in the repo) to the source image"
+        required: false
+        default: "assets/input.jpg"
+      duration:
+        description: "Video duration in seconds"
+        required: false
+        default: "12"
+      resolution_x:
+        description: "Render width (pixels)"
+        required: false
+        default: "1920"
+      resolution_y:
+        description: "Render height (pixels)"
+        required: false
+        default: "1080"
+      samples:
+        description: "Cycles render samples (higher = cleaner but slower)"
+        required: false
+        default: "64"
+  push:
+    paths:
+      - "assets/**"
+
+env:
+  BLENDER_VERSION: "4.2.4"
+  BLENDER_TARBALL: "blender-4.2.4-linux-x64.tar.xz"
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Cache Blender download
+        id: cache-blender
+        uses: actions/cache@v4
+        with:
+          path: blender-bin
+          key: blender-${{ env.BLENDER_VERSION }}-linux-x64
+
+      - name: Download Blender
+        if: steps.cache-blender.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p blender-bin
+          curl -L -o blender.tar.xz "https://download.blender.org/release/Blender4.2/${BLENDER_TARBALL}"
+          tar -xf blender.tar.xz -C blender-bin --strip-components=1
+          rm blender.tar.xz
+
+      - name: Detect contour path
+        run: |
+          mkdir -p build output
+          python3 src/detect_path.py \
+            --image "${{ github.event.inputs.image_path || 'assets/input.jpg' }}" \
+            --out build/path.json
+
+      - name: Render 3D cinematic video with Blender
+        run: |
+          ./blender-bin/blender -b -P src/blender_scene.py -- \
+            --image "${{ github.event.inputs.image_path || 'assets/input.jpg' }}" \
+            --path build/path.json \
+            --out output/snake_cinematic.mp4 \
+            --duration "${{ github.event.inputs.duration || '12' }}" \
+            --fps 24 \
+            --resolution-x "${{ github.event.inputs.resolution_x || '1920' }}" \
+            --resolution-y "${{ github.event.inputs.resolution_y || '1080' }}" \
+            --samples "${{ github.event.inputs.samples || '64' }}"
+
+      - name: Upload rendered video
+        uses: actions/upload-artifact@v4
+        with:
+          name: snake-cinematic-video
+          path: output/snake_cinematic.mp4
+          retention-days: 14
